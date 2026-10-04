@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Video & Audio Downloader</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      body {
+        background-color: #0f0f0f;
+        color: #ffffff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        background-color: #1f1f1f;
+        width: 100%;
+        max-width: 500px;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        border: 1px solid #333;
+      }
+      h2 {
+        text-align: center;
+        color: #ff0000;
+        margin-bottom: 20px;
+        font-size: 1.6rem;
+      }
+      .input-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: #bbb;
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+      input[type="text"],
+      select {
+        width: 100%;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #444;
+        background-color: #2b2b2b;
+        color: #fff;
+        font-size: 14px;
+        outline: none;
+      }
+      input[type="text"]:focus,
+      select:focus {
+        border-color: #ff0000;
+      }
+      .options-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .btn-submit {
+        width: 100%;
+        padding: 14px;
+        background-color: #ff0000;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 15px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .btn-submit:hover {
+        background-color: #cc0000;
+      }
+      .btn-submit:disabled {
+        background-color: #555;
+        cursor: not-allowed;
+      }
+      .status {
+        margin-top: 15px;
+        text-align: center;
+        font-size: 14px;
+        color: #aaa;
+        display: none;
+      }
+      .result-card {
+        display: none;
+        margin-top: 20px;
+        background: #282828;
+        padding: 16px;
+        border-radius: 10px;
+        text-align: center;
+      }
+      .result-card img {
+        width: 100%;
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+      .btn-download {
+        display: inline-block;
+        width: 100%;
+        padding: 12px;
+        background-color: #28a745;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: bold;
+        margin-top: 10px;
+      }
+      .btn-download:hover {
+        background-color: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>YouTube Downloader</h2>
+
+      <div class="input-group">
+        <label for="urlInput">URL Video YouTube:</label>
+        <input
+          type="text"
+          id="urlInput"
+          placeholder="https://www.youtube.com/watch?v=..." />
+      </div>
+
+      <div class="options-grid">
+        <div>
+          <label for="formatSelect">Format:</label>
+          <select id="formatSelect" onchange="toggleQualityDropdown()">
+            <option value="mp4">Video (MP4)</option>
+            <option value="mp3">Audio Only (MP3)</option>
+          </select>
+        </div>
+        <div>
+          <label for="qualitySelect">Resolusi:</label>
+          <select id="qualitySelect">
+            <option value="1080">1080p</option>
+            <option value="720" selected>720p</option>
+            <option value="480">480p</option>
+            <option value="360">360p</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="submitBtn" class="btn-submit" onclick="processVideo()">
+        PROSES VIDEO
+      </button>
+
+      <div id="status" class="status">⏳ Sedang memproses... Mohon tunggu.</div>
+
+      <div id="resultCard" class="result-card">
+        <img id="thumbPreview" src="" alt="Thumbnail" />
+        <p style="color: #4cd137; font-weight: bold">✅ File Siap Diunduh!</p>
+        <a
+          id="downloadBtn"
+          class="btn-download"
+          target="_blank"
+          rel="noopener noreferrer"
+          >KLIK UNTUK MENGUNDUH</a
+        >
+      </div>
+    </div>
+
+    <script>
+      function toggleQualityDropdown() {
+        const format = document.getElementById("formatSelect").value;
+        const qualitySelect = document.getElementById("qualitySelect");
+
+        if (format === "mp3") {
+          qualitySelect.disabled = true;
+        } else {
+          qualitySelect.disabled = false;
+        }
+      }
+
+      function extractVideoID(url) {
+        const regExp =
+          /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return match && match[2].length === 11 ? match[2] : null;
+      }
+
+      async function processVideo() {
+        const url = document.getElementById("urlInput").value.trim();
+        const format = document.getElementById("formatSelect").value;
+        const quality = document.getElementById("qualitySelect").value;
+
+        const submitBtn = document.getElementById("submitBtn");
+        const status = document.getElementById("status");
+        const resultCard = document.getElementById("resultCard");
+        const downloadBtn = document.getElementById("downloadBtn");
+        const thumbPreview = document.getElementById("thumbPreview");
+
+        if (!url) {
+          alert("Silakan masukkan URL YouTube terlebih dahulu!");
+          return;
+        }
+
+        const videoId = extractVideoID(url);
+        if (!videoId) {
+          alert("URL YouTube tidak valid!");
+          return;
+        }
+
+        // Reset UI
+        submitBtn.disabled = true;
+        status.style.display = "block";
+        resultCard.style.display = "none";
+
+        try {
+          const response = await fetch("/api/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url, format, quality }),
+          });
+
+          const data = await response.json();
+          submitBtn.disabled = false;
+          status.style.display = "none";
+
+          if (data.success && data.downloadUrl) {
+            thumbPreview.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            downloadBtn.href = data.downloadUrl;
+            resultCard.style.display = "block";
+          } else {
+            alert(data.error || "Gagal memproses video.");
+          }
+        } catch (err) {
+          submitBtn.disabled = false;
+          status.style.display = "none";
+          alert("Terjadi kesalahan koneksi ke server.");
+        }
+      }
+    </script>
+  </body>
+</html>
