@@ -4,38 +4,34 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Tangani preflight request
+    // Handling preflight request dari browser
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
 
     try {
         if (req.method !== 'POST') {
-            return res.status(405).json({ error: 'Method Not Allowed' });
+            return res.status(200).json({ success: false, error: 'Method Not Allowed' });
         }
 
-        // Parsing body dengan aman (mencegah error jika body berupa string)
+        // Handling parsing body secara aman
         let body = req.body;
         if (typeof body === 'string') {
-            try {
-                body = JSON.parse(body);
-            } catch (e) {
-                body = {};
-            }
+            try { body = JSON.parse(body); } catch (e) { body = {}; }
         }
         body = body || {};
 
         const { url, format, quality } = body;
 
         if (!url) {
-            return res.status(400).json({ error: 'URL YouTube wajib diisi!' });
+            return res.status(200).json({ success: false, error: 'URL YouTube wajib diisi!' });
         }
 
-        // Daftar server instance Cobalt cadangan
-        const apiInstances = [
-            'https://cobalt.stream/api/json',
-            'https://co.wuk.sh/api/json',
-            'https://api.cobalt.tools/api/json'
+        // Endpoint cluster API Cobalt terbaru
+        const apiEndpoints = [
+            'https://api.cobalt.tools/',
+            'https://cobalt.stream/',
+            'https://co.wuk.sh/'
         ];
 
         const payload = {
@@ -46,28 +42,24 @@ module.exports = async (req, res) => {
             filenamePattern: 'basic'
         };
 
-        let lastError = 'Semua server API sibuk. Coba beberapa saat lagi.';
+        let lastErrorMessage = 'Gagal memproses video. Pastikan link video publik dan valid.';
 
-        for (const endpoint of apiInstances) {
+        for (const endpoint of apiEndpoints) {
             try {
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                     },
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) {
-                    continue;
-                }
+                if (!response.ok) continue;
 
                 const contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) {
-                    continue;
-                }
+                if (!contentType.includes('application/json')) continue;
 
                 const data = await response.json();
 
@@ -78,20 +70,16 @@ module.exports = async (req, res) => {
                 } else if (data.url) {
                     return res.status(200).json({ success: true, downloadUrl: data.url });
                 } else if (data.text) {
-                    lastError = data.text;
+                    lastErrorMessage = data.text;
                 }
             } catch (err) {
-                lastError = err.message;
+                lastErrorMessage = err.message;
             }
         }
 
-        return res.status(400).json({ error: lastError });
+        return res.status(200).json({ success: false, error: lastErrorMessage });
 
     } catch (globalError) {
-        // Tangkap semua error internal agar Vercel tidak merespon dengan 500
-        console.error('Vercel Function Error:', globalError);
-        return res.status(200).json({ 
-            error: `Terjadi kesalahan pada server function: ${globalError.message}` 
-        });
+        return res.status(200).json({ success: false, error: globalError.message });
     }
 };
